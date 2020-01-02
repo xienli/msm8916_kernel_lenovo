@@ -587,6 +587,10 @@ config MSM_HOTPLUG
 	  The MSM hotplug driver controls on-/offlining of additional cores based
 	  on current cpu load.
 
+config STATE_NOTIFIER
+        bool "State Notifier"
+	default y
+
 config MSM_LIMITER
 	bool "MSM Frequency Limiter Driver"
 	default y
