@@ -32,6 +32,10 @@
 #include <linux/hrtimer.h>
 #include <asm-generic/cputime.h>
 
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+#endif
+
 /* Version, author, desc, etc */
 #define DRIVER_AUTHOR "Dennis Rassmann <showp1984@gmail.com>"
 #define DRIVER_DESCRIPTION "Doubletap2wake for almost any device"
@@ -275,6 +279,21 @@ static struct input_handler dt2w_input_handler = {
 	.id_table	= dt2w_ids,
 };
 
+#ifdef CONFIG_POWERSUSPEND
+static void dt2w_power_suspend(struct power_suspend *h) {
+	dt2w_scr_suspended = true;
+}
+
+static void dt2w_power_resume(struct power_suspend *h) {
+	dt2w_scr_suspended = false;
+}
+
+static struct power_suspend dt2w_power_suspend_handler = {
+	.suspend = dt2w_power_suspend,
+	.resume = dt2w_power_resume,
+};
+#endif
+
 /*
  * SYSFS stuff below here
  */
@@ -369,6 +388,10 @@ static int __init doubletap2wake_init(void)
 	if (rc) {
 		pr_warn("%s: sysfs_create_file failed for doubletap2wake_version\n", __func__);
 	}
+
+#ifdef CONFIG_POWERSUSPEND
+	register_power_suspend(&dt2w_power_suspend_handler);
+#endif
 
 err_input_dev:
 	input_free_device(doubletap2wake_pwrdev);
