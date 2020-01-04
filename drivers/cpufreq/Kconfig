@@ -146,6 +146,11 @@ config CPU_FREQ_DEFAULT_GOV_PEGASUSQ
 	help
 	  Use the CPUFreq governor 'pegasusq' as default.
 
+config CPU_FREQ_DEFAULT_GOV_ALUCARD
+  	bool "alucard"
+  	select CPU_FREQ_GOV_ALUCARD
+  	help
+
 endchoice
 
 config CPU_FREQ_GOV_PERFORMANCE
@@ -273,13 +278,17 @@ config CPU_FREQ_GOV_DARKNESS
 	  If in doubt, say Y.
 
 config CPU_FREQ_GOV_ZZMOOVE
-	tristate "zzmoove"
+	tristate "'zzmoove' cpufreq policy governor"
 	depends on CPU_FREQ
 	help
 	  If in doubt, say N.
 
 config CPU_FREQ_GOV_PEGASUSQ
 	tristate "'pegasusq' cpufreq policy governor"
+
+config CPU_FREQ_GOV_ALUCARD
+	tristate "'alucard' cpufreq governor"
+	depends on CPU_FREQ
 
 config CPU_BOOST
 	tristate "Event base short term CPU freq boost"
