@@ -25,12 +25,14 @@
 #include <linux/delay.h>
 #include <linux/init.h>
 #include <linux/err.h>
-#include <linux/input/doubletap2wake.h>
+#include <linux/input/alternativewake.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
 #include <linux/input.h>
 #include <linux/hrtimer.h>
 #include <asm-generic/cputime.h>
+
+#define ANDROID_TOUCH_DECLARED
 
 #ifdef CONFIG_POWERSUSPEND
 #include <linux/powersuspend.h>
@@ -57,7 +59,7 @@ MODULE_LICENSE("GPLv2");
 
 /* Resources */
 int dt2w_switch = DT2W_DEFAULT;
-bool dt2w_scr_suspended = false;
+//bool dt2w_scr_suspended = false;
 bool in_phone_call = false;
 static cputime64_t tap_time_pre = 0;
 static int touch_x = 0, touch_y = 0, touch_nr = 0, x_pre = 0, y_pre = 0;
@@ -190,7 +192,7 @@ static void dt2w_input_event(struct input_handle *handle, unsigned int type,
 		(code==ABS_MT_TRACKING_ID) ? "ID" :
 		"undef"), code, value);
 #endif
-	if (!dt2w_scr_suspended)
+	if (!scr_suspended)
 		return;
 
 	if (code == ABS_MT_SLOT) {
@@ -281,11 +283,11 @@ static struct input_handler dt2w_input_handler = {
 
 #ifdef CONFIG_POWERSUSPEND
 static void dt2w_power_suspend(struct power_suspend *h) {
-	dt2w_scr_suspended = true;
+	scr_suspended = true;
 }
 
 static void dt2w_power_resume(struct power_suspend *h) {
-	dt2w_scr_suspended = false;
+	scr_suspended = false;
 }
 
 static struct power_suspend dt2w_power_suspend_handler = {
@@ -342,9 +344,12 @@ static DEVICE_ATTR(doubletap2wake_version, (S_IWUSR|S_IRUGO),
 /*
  * INIT / EXIT stuff below here
  */
+#ifdef ANDROID_TOUCH_DECLARED
+extern struct kobject *android_touch_kobj;
+#else
 struct kobject *android_touch_kobj;
 EXPORT_SYMBOL_GPL(android_touch_kobj);
-
+#endif
 static int __init doubletap2wake_init(void)
 {
 	int rc = 0;
@@ -374,8 +379,9 @@ static int __init doubletap2wake_init(void)
 	rc = input_register_handler(&dt2w_input_handler);
 	if (rc)
 		pr_err("%s: Failed to register dt2w_input_handler\n", __func__);
-
+#ifndef ANDROID_TOUCH_DECLARED
 	android_touch_kobj = kobject_create_and_add("android_touch", NULL) ;
+#endif
 	if (android_touch_kobj == NULL) {
 		pr_warn("%s: android_touch_kobj create_and_add failed\n", __func__);
 	}
@@ -403,7 +409,9 @@ err_alloc_dev:
 
 static void __exit doubletap2wake_exit(void)
 {
+#ifndef ANDROID_TOUCH_DECLARED
 	kobject_del(android_touch_kobj);
+#endif
 	input_unregister_handler(&dt2w_input_handler);
 	destroy_workqueue(dt2w_input_wq);
 	input_unregister_device(doubletap2wake_pwrdev);
