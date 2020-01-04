@@ -84,7 +84,6 @@ static unsigned int generic_powersave_bias_target(struct cpufreq_policy *policy,
 						   policy->cpu);
 	struct dbs_data *dbs_data = policy->governor_data;
 	struct od_dbs_tuners *od_tuners = dbs_data->tuners;
-	cpufreq_notify_utilization(policy, load);
 
 	if (!dbs_info->freq_table) {
 		dbs_info->freq_lo = 0;
@@ -159,6 +158,7 @@ static void od_check_cpu(int cpu, unsigned int load)
 	struct cpufreq_policy *policy = dbs_info->cdbs.cur_policy;
 	struct dbs_data *dbs_data = policy->governor_data;
 	struct od_dbs_tuners *od_tuners = dbs_data->tuners;
+	cpufreq_notify_utilization(policy, load);
 
 	dbs_info->freq_lo = 0;
 
