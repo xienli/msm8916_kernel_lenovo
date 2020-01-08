@@ -190,6 +190,10 @@ config CPU_FREQ_DEFAULT_GOV_YANKACTIVE
  	bool "yankactive"
  	select CPU_FREQ_GOV_YANKACTIVE  
 
+config CPU_FREQ_DEFAULT_GOV_HYPER
+ 	bool "hyper"
+ 	select CPU_FREQ_GOV_HYPER
+
 endchoice
 
 config CPU_FREQ_GOV_PERFORMANCE
@@ -390,6 +394,12 @@ config CPU_FREQ_GOV_YANKACTIVE
    	  for latency-sensitive workloads. The governor is based on interactive with
    	  just different default settings and can be achieved using interactive with a
    	  script. This is added for simplification purposes for myself.
+
+config CPU_FREQ_GOV_HYPER
+ 	tristate "'hyper' cpufreq policy governor"
+ 	depends on CPU_FREQ
+ 	---help---
+ 	  'hyper' - A tweaked "ondemand" based smart and smooth optimized governor!
 
 config CPU_BOOST
 	tristate "Event base short term CPU freq boost"
