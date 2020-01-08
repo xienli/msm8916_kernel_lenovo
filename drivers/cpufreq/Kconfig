@@ -186,6 +186,10 @@ config CPU_FREQ_DEFAULT_GOV_INTELLIACTIVE
 	  loading your cpufreq low-level hardware driver, using the
 	  'interactive' governor for latency-sensitive workloads.
 
+config CPU_FREQ_DEFAULT_GOV_YANKACTIVE
+ 	bool "yankactive"
+ 	select CPU_FREQ_GOV_YANKACTIVE  
+
 endchoice
 
 config CPU_FREQ_GOV_PERFORMANCE
@@ -360,7 +364,7 @@ config CPU_FREQ_GOV_IMPULSE
 	  If in doubt, say N.
 
 config CPU_FREQ_GOV_INTELLIACTIVE
-	tristate "intelliactive"
+	tristate "'intelliactive' cpufreq policy governor"
 	help
 		'intelliactive' - This driver adds a dynamic cpufreq policy governor
 		designed for latency-sensitive workloads.
@@ -374,10 +378,18 @@ config CPU_FREQ_GOV_INTELLIACTIVE
 		If in doubt, say N.
 
 config CPU_FREQ_GOV_NIGHTMARE
-	tristate "nightmare"
+	tristate "'nightmare' cpufreq policy governor"
 	depends on CPU_FREQ
 	help
 		If in doubt, say N.
+
+config CPU_FREQ_GOV_YANKACTIVE
+ 	tristate "'yankactive' cpufreq policy governor"
+ 	help
+   	  'yankactive' - This driver adds a dynamic cpufreq policy governor designed
+   	  for latency-sensitive workloads. The governor is based on interactive with
+   	  just different default settings and can be achieved using interactive with a
+   	  script. This is added for simplification purposes for myself.
 
 config CPU_BOOST
 	tristate "Event base short term CPU freq boost"
