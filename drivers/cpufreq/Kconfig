@@ -194,6 +194,12 @@ config CPU_FREQ_DEFAULT_GOV_HYPER
  	bool "hyper"
  	select CPU_FREQ_GOV_HYPER
 
+config CPU_FREQ_DEFAULT_GOV_INTERACTIVE_PRO
+	bool "interactive_pro"
+	select CPU_FREQ_GOV_INTERACTIVE_PRO
+	---help---
+	  Use the CPUFreq governor 'interactive_pro' as default.
+
 endchoice
 
 config CPU_FREQ_GOV_PERFORMANCE
@@ -400,6 +406,10 @@ config CPU_FREQ_GOV_HYPER
  	depends on CPU_FREQ
  	---help---
  	  'hyper' - A tweaked "ondemand" based smart and smooth optimized governor!
+
+config CPU_FREQ_GOV_INTERACTIVE_PRO
+	tristate "'interactive_pro' cpufreq governor"
+	depends on CPU_FREQ
 
 config CPU_BOOST
 	tristate "Event base short term CPU freq boost"
