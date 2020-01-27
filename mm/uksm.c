@@ -163,7 +163,9 @@ static int is_full_zero(const void *s1, size_t len)
 }
 
 #endif
-#elif defined(CONFIG_ARM)
+// Note for ARM Device
+// Change this #elif defined(CONFIG_ARM64) to #elif defined(CONFIG_ARM)
+#elif defined(CONFIG_ARM64)
 static int is_full_zero(const void *s1, size_t len)
 {
 	const unsigned long *src = s1;
