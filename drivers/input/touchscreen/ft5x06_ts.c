@@ -32,8 +32,8 @@
 #include <linux/sensors.h>
 #include <linux/input/ft5x06_ts.h>
 
-#ifdef CONFIG_TOUCHSCREEN_ALTERNATIVEWAKE
-#include <linux/input/alternativewake.h>
+#ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
+#include <linux/input/doubletap2wake.h>
 #endif
 
 #if defined(CONFIG_FB)
@@ -241,11 +241,6 @@ enum {
 				fw_sub_min)
 
 #define FT_DEBUG_DIR_NAME	"ts_debug"
-
-#ifdef CONFIG_TOUCHSCREEN_ALTERNATIVEWAKE
-bool altwake_chk = false;
-bool scr_suspended = false;
-#endif
 
 struct ft5x06_ts_data {
 	struct i2c_client *client;
@@ -1036,21 +1031,6 @@ static int ft5x06_ts_start(struct device *dev)
 	struct ft5x06_ts_data *data = dev_get_drvdata(dev);
 	int err;
 
-#ifdef CONFIG_TOUCHSCREEN_ALTERNATIVEWAKE
-#if defined(CONFIG_TOUCHSCREEN_SWEEP2WAKE)
-	altwake_chk = (s2w_switch > 0);
-#endif
-#if defined(CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE)
-	altwake_chk = (altwake_chk || (dt2w_switch > 0));
-#endif
-
-	if (altwake_chk){
-    	//credit @premaca https://github.com/premaca
-		__set_bit(EV_KEY, data->input_dev->evbit);
-		input_sync(data->input_dev);
-	}
-#endif
-
 	if (data->pdata->power_on) {
 		err = data->pdata->power_on(true);
 		if (err) {
@@ -1086,15 +1066,8 @@ static int ft5x06_ts_start(struct device *dev)
 	}
 
 	msleep(data->pdata->soft_rst_dly);
-#ifdef CONFIG_TOUCHSCREEN_ALTERNATIVEWAKE
-	if (altwake_chk) {
-		disable_irq_wake(data->client->irq);
-	} else {
-		enable_irq(data->client->irq);
-	}
-#else
+
 	enable_irq(data->client->irq);
-#endif
 	data->suspended = false;
 
 	return 0;
@@ -1124,21 +1097,8 @@ static int ft5x06_ts_stop(struct device *dev)
 	char txbuf[2];
 	int i, err;
 
-#ifdef CONFIG_TOUCHSCREEN_ALTERNATIVEWAKE
-#if defined(CONFIG_TOUCHSCREEN_SWEEP2WAKE)
-	altwake_chk = (s2w_switch > 0);
-#endif
-#if defined(CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE)
-	altwake_chk = (altwake_chk || (dt2w_switch > 0));
-#endif
-	if (altwake_chk) {
-		enable_irq_wake(data->client->irq);
-	} else {
-		disable_irq(data->client->irq);
-	}
-#else
 	disable_irq(data->client->irq);
-#endif
+
 	/* release all touches */
 	for (i = 0; i < data->pdata->num_max_touches; i++) {
 		input_mt_slot(data->input_dev, i);
@@ -1149,11 +1109,7 @@ static int ft5x06_ts_stop(struct device *dev)
 
 	if (gpio_is_valid(data->pdata->reset_gpio)) {
 		txbuf[0] = FT_REG_PMODE;
-#ifdef CONFIG_TOUCHSCREEN_ALTERNATIVEWAKE
-		txbuf[1] = (altwake_chk) ? FT_PMODE_MONITOR : FT_PMODE_HIBERNATE;
-#else
 		txbuf[1] = FT_PMODE_HIBERNATE;
-#endif
 		ft5x06_i2c_write(data->client, txbuf, sizeof(txbuf));
 	}
 
@@ -1187,14 +1143,6 @@ static int ft5x06_ts_stop(struct device *dev)
 
 	data->suspended = true;
 
-#ifdef CONFIG_TOUCHSCREEN_ALTERNATIVEWAKE
-	if (altwake_chk){
-    	//credit @premaca https://github.com/premaca
-		__clear_bit(EV_KEY, data->input_dev->evbit); 
-		input_sync(data->input_dev);
-	}
-#endif
-
 	return 0;
 
 gpio_configure_fail:
@@ -1227,6 +1175,13 @@ static int ft5x06_ts_suspend(struct device *dev)
 {
 	struct ft5x06_ts_data *data = dev_get_drvdata(dev);
 	int err;
+
+#ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
+	bool prevent_sleep = (dt2w_switch > 0);
+	if (prevent_sleep) {
+		disable_irq_wake(data->client->irq);
+	} else {
+#endif
 
 	if (data->loading_fw) {
 		dev_info(dev, "Firmware loading in process...\n");
@@ -1262,6 +1217,9 @@ static int ft5x06_ts_suspend(struct device *dev)
 		data->suspended = true;
 		return err;
 	}
+#ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
+	}
+#endif
 	return ft5x06_ts_stop(dev);
 }
 
@@ -1269,6 +1227,13 @@ static int ft5x06_ts_resume(struct device *dev)
 {
 	struct ft5x06_ts_data *data = dev_get_drvdata(dev);
 	int err;
+
+#ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
+	bool prevent_sleep = (dt2w_switch > 0);
+	if (prevent_sleep) {
+		enable_irq_wake(data->client->irq);
+	} else {
+#endif
 
 	if (!data->suspended) {
 		dev_dbg(dev, "Already in awake state\n");
@@ -1318,6 +1283,9 @@ static int ft5x06_ts_resume(struct device *dev)
 		data->suspended = false;
 		data->gesture_pdata->in_pocket = 0;
 	}
+#ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
+	}
+#endif
 	return 0;
 }
 
@@ -1355,8 +1323,15 @@ static int fb_notifier_callback(struct notifier_block *self,
 	struct fb_event *evdata = data;
 	int *blank;
 	struct ft5x06_ts_data *ft5x06_data =
-	container_of(self, struct ft5x06_ts_data, fb_notif);
-
+		container_of(self, struct ft5x06_ts_data, fb_notif);
+#ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
+	bool prevent_sleep;
+	prevent_sleep = (dt2w_switch > 0);
+			if (prevent_sleep) {
+				ft5x06_ts_resume(&ft5x06_data->client->dev);
+				return 0;
+			} else {
+#endif
 	if (evdata && evdata->data && ft5x06_data && ft5x06_data->client) {
 		blank = evdata->data;
 		if (ft5x06_data->pdata->resume_in_workqueue) {
@@ -1379,6 +1354,9 @@ static int fb_notifier_callback(struct notifier_block *self,
 			}
 		}
 	}
+#ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
+	}
+#endif
 	return 0;
 }
 #elif defined(CONFIG_HAS_EARLYSUSPEND)
@@ -2330,16 +2308,18 @@ static int ft5x06_ts_probe(struct i2c_client *client,
 
 	data->family_id = pdata->family_id;
 
-	//err = request_threaded_irq(client->irq, NULL,
-	//			ft5x06_ts_interrupt,
+	err = request_threaded_irq(client->irq, NULL,
+				ft5x06_ts_interrupt,
 	/*
 	* the interrupt trigger mode will be set in Device Tree with property
 	* "interrupts", so here we just need to set the flag IRQF_ONESHOT
 	*/
-#ifdef CONFIG_TOUCHSCREEN_ALTERNATIVEWAKE
-		err = request_threaded_irq(client->irq, NULL, ft5x06_ts_interrupt, IRQF_ONESHOT | IRQF_NO_SUSPEND, client->dev.driver->name, data);
+#ifdef CONFIG_TOUCHSCREEN_DOUBLETAP2WAKE
+				IRQF_ONESHOT | IRQF_NO_SUSPEND,
+				client->dev.driver->name, data);
 #else
-		err = request_threaded_irq(client->irq, NULL, ft5x06_ts_interrupt, IRQF_ONESHOT, client->dev.driver->name, data);
+				IRQF_ONESHOT,
+				client->dev.driver->name, data);
 #endif
 	if (err) {
 		dev_err(&client->dev, "request irq failed\n");
